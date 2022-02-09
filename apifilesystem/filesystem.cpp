@@ -268,6 +268,7 @@ namespace ngs::fs {
 
     struct dir_ite_struct {
       vector<string> vec;
+      bool recursive;
       unsigned index;
       unsigned nlink;
       #if defined(_WIN32)
@@ -294,7 +295,7 @@ namespace ngs::fs {
           ghc::filesystem::path file_path = ghc::filesystem::path(filename_absolute(dir_ite->path().string()));
           #if defined(_WIN32)
           BY_HANDLE_FILE_INFORMATION info = { 0 }; int fd = -1;
-          if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0) {
+          if (file_exists(file_path.string())) {
             if ((fd = _wopen(file_path.wstring().c_str(), _O_RDONLY, _S_IREAD)) != -1) {
               bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
               bool matches = (info.nFileIndexHigh == s->ino_high && info.nFileIndexLow == s->ino_low && info.dwVolumeSerialNumber == s->dev);
@@ -312,6 +313,7 @@ namespace ngs::fs {
                 _close(fd);
               }
             }
+          }
           #else
           struct stat info = { 0 }; 
           if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !stat(file_path.string().c_str(), &info)) {
@@ -322,16 +324,14 @@ namespace ngs::fs {
                 return;
               }
             }
-          #endif
-            if (directory_exists(file_path.string())) {
-              s->vec.push_back(file_path.string()); sort(s->vec.begin(), s->vec.end() );
-              s->vec.erase(unique(s->vec.begin(), s->vec.end() ), s->vec.end());
-              s->index++; file_bin_pathname_helper(s);
-            }
           }
+          #endif
         }
       }
-      return;
+      while (s->index < s->vec.size()) {
+        message_pump(); s->index++;
+        file_bin_pathname_helper(s);
+      }
     }
 
   } // anonymous namespace
@@ -410,18 +410,18 @@ namespace ngs::fs {
     #endif
       vector<string> in = string_split(dnames, '\n');
       struct dir_ite_struct new_struct; 
-      new_struct.vec      = in; 
-      new_struct.index    = 0;
+      new_struct.vec       = in;
+      new_struct.index     = 0;
       #if defined(_WIN32)
-      new_struct.nlink    = info.nNumberOfLinks;
-      new_struct.ino_high = info.nFileIndexHigh;
-      new_struct.ino_low  = info.nFileIndexLow;
-      new_struct.dev      = info.dwVolumeSerialNumber;
-      new_struct.fd       = fd;
+      new_struct.nlink     = info.nNumberOfLinks;
+      new_struct.ino_high  = info.nFileIndexHigh;
+      new_struct.ino_low   = info.nFileIndexLow;
+      new_struct.dev       = info.dwVolumeSerialNumber;
+      new_struct.fd        = fd;
       #else
-      new_struct.nlink    = info.st_nlinks;
-      new_struct.ino      = info.st_ino; 
-      new_struct.dev      = info.st_dev;
+      new_struct.nlink     = info.st_nlinks;
+      new_struct.ino       = info.st_ino; 
+      new_struct.dev       = info.st_dev;
       #endif
       file_bin_pathname_helper(&new_struct);
       for (unsigned i = 0; i < file_bin_pathname_result.size(); i++) {
