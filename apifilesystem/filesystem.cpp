@@ -408,8 +408,9 @@ namespace ngs::fs {
     struct stat info = { 0 };
     if (!fstat(fd, &info) && info.st_nlink) {
     #endif
-      vector<string> in = string_split(dnames, '\n');
+      file_bin_pathname_result.clear();
       struct dir_ite_struct new_struct; 
+      vector<string> in   = string_split(dnames, '\n');
       new_struct.vec      = in;
       new_struct.index    = 0;
       #if defined(_WIN32)
