@@ -410,18 +410,18 @@ namespace ngs::fs {
     #endif
       vector<string> in = string_split(dnames, '\n');
       struct dir_ite_struct new_struct; 
-      new_struct.vec       = in;
-      new_struct.index     = 0;
+      new_struct.vec      = in;
+      new_struct.index    = 0;
       #if defined(_WIN32)
-      new_struct.nlink     = info.nNumberOfLinks;
-      new_struct.ino_high  = info.nFileIndexHigh;
-      new_struct.ino_low   = info.nFileIndexLow;
-      new_struct.dev       = info.dwVolumeSerialNumber;
-      new_struct.fd        = fd;
+      new_struct.nlink    = info.nNumberOfLinks;
+      new_struct.ino_high = info.nFileIndexHigh;
+      new_struct.ino_low  = info.nFileIndexLow;
+      new_struct.dev      = info.dwVolumeSerialNumber;
+      new_struct.fd       = fd;
       #else
-      new_struct.nlink     = info.st_nlinks;
-      new_struct.ino       = info.st_ino; 
-      new_struct.dev       = info.st_dev;
+      new_struct.nlink    = info.st_nlinks;
+      new_struct.ino      = info.st_ino; 
+      new_struct.dev      = info.st_dev;
       #endif
       file_bin_pathname_helper(&new_struct);
       for (unsigned i = 0; i < file_bin_pathname_result.size(); i++) {
