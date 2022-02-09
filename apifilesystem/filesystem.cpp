@@ -271,8 +271,9 @@ namespace ngs::fs {
       unsigned index;
       unsigned nlink;
       #if defined(_WIN32)
-      FILE_ID_128 ino;
-      unsigned long long dev;
+      unsigned long ino_high;
+      unsigned long ino_low;
+      unsigned long dev;
       int fd;
       #else
       ino_t ino;
@@ -280,11 +281,10 @@ namespace ngs::fs {
       #endif
     };
 
-    vector<string> thread_result;
-    void *directory_iterator_thread(void *p) {
-      struct dir_ite_struct *s = (struct dir_ite_struct *)p; pthread_t thr;
-      if (thread_result.size() >= s->nlink) return nullptr; std::error_code ec;
-      if (!directory_exists(s->vec[s->index])) return nullptr;
+    vector<string> file_bin_pathname_result;
+    void file_bin_pathname_helper(dir_ite_struct *s) {
+      if (file_bin_pathname_result.size() >= s->nlink) return; 
+      std::error_code ec; if (!directory_exists(s->vec[s->index])) return;
       s->vec[s->index] = filename_remove_slash(s->vec[s->index], true);
       const ghc::filesystem::path path = ghc::filesystem::path(s->vec[s->index]);
       if (directory_exists(s->vec[s->index]) || path.root_name().string() + "\\" == path.string()) {
@@ -293,35 +293,45 @@ namespace ngs::fs {
           message_pump(); if (ec.value() != 0) { break; }
           ghc::filesystem::path file_path = ghc::filesystem::path(filename_absolute(dir_ite->path().string()));
           #if defined(_WIN32)
-          struct _stat info  = { 0 }; 
-          FILE_ID_INFO info2 = { 0 }; int fd = -1;
-          if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !_wstat(file_path.wstring().c_str(), &info) &&
-            ((fd = _wopen(file_path.wstring().c_str(), _O_RDONLY, _S_IREAD)) != -1)) {
-            bool matches = (info2.FileId == s->ino && info2.VolumeSerialNumber == s->dev);
-            bool success =  GetFileInformationByHandleEx((HANDLE)_get_osfhandle(fd), FileIdInfo, &info2, sizeof(info2));
-            if (fd != s->fd) _close(fd);
-            if (matches && success) {
+          BY_HANDLE_FILE_INFORMATION info = { 0 }; int fd = -1;
+          if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0) {
+            if ((fd = _wopen(file_path.wstring().c_str(), _O_RDONLY, _S_IREAD)) != -1) {
+              bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
+              bool matches = (info.nFileIndexHigh == s->ino_high && info.nFileIndexLow == s->ino_low && info.dwVolumeSerialNumber == s->dev);
+              if (matches && success) {
+                file_bin_pathname_result.push_back(file_path.string());
+                if (file_bin_pathname_result.size() >= info.nNumberOfLinks) {
+                  s->nlink = info.nNumberOfLinks; s->vec.clear();
+                  if (fd != s->fd) {
+                    _close(fd);
+                  }
+                  return;
+                }
+              }
+              if (fd != s->fd) {
+                _close(fd);
+              }
+            }
           #else
           struct stat info = { 0 }; 
           if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !stat(file_path.string().c_str(), &info)) {
             if (info.st_ino == s->ino && info.st_dev == s->dev) {
-          #endif
-              thread_result.push_back(file_path.string());
-              if (thread_result.size() >= info.st_nlink) {
+              file_bin_pathname_result.push_back(file_path.string());
+              if (file_bin_pathname_result.size() >= info.st_nlink) {
                 s->nlink = info.st_nlink; s->vec.clear();
-                return nullptr;
+                return;
               }
             }
+          #endif
             if (directory_exists(file_path.string())) {
               s->vec.push_back(file_path.string()); sort(s->vec.begin(), s->vec.end() );
               s->vec.erase(unique(s->vec.begin(), s->vec.end() ), s->vec.end());
-              s->index++; pthread_create(&thr, nullptr, directory_iterator_thread, (void *)s);
-              message_pump(); pthread_join(thr, nullptr);
+              s->index++; file_bin_pathname_helper(s);
             }
           }
         }
       }
-      return nullptr;
+      return;
     }
 
   } // anonymous namespace
@@ -389,52 +399,33 @@ namespace ngs::fs {
     return path;
   }
 
-  string file_bin_pathname(int fd) {
+  string file_bin_pathname(int fd, string dnames) {
     string path;
     #if defined(_WIN32)
-    struct _stat info  = { 0 };
-    FILE_ID_INFO info2 = { 0 };
-    if (!_fstat(fd, &info) && 0 < info.st_nlink &&
-      GetFileInformationByHandleEx((HANDLE)_get_osfhandle(fd), FileIdInfo, &info2, sizeof(info2))) {
+    BY_HANDLE_FILE_INFORMATION info = { 0 };
+    if (GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info) && info.nNumberOfLinks) {
     #else
     struct stat info = { 0 };
-    if (!fstat(fd, &info) && 0 < info.st_nlink) {
+    if (!fstat(fd, &info) && info.st_nlink) {
     #endif
-      pthread_t t; 
-      vector<string> in; 
-      unsigned size = GetLogicalDriveStrings(0, nullptr);
-      if (size) {
-        wchar_t *buffer = new wchar_t[size]();
-        size = GetLogicalDriveStringsW(size, buffer);
-        if (size) {
-          wchar_t *p = buffer; unsigned i = 0;
-          while (*p != L'\0' && i < size) {
-            in.push_back(narrow(p));
-            p += wcsnlen(p, size) + 1;
-            i++;
-          }
-        }
-        delete[] buffer;
-      }
-      in.push_back(directory_get_temporary_path());
-      in.push_back(environment_get_variable("HOME"));
-      vector<string> epath = string_split(environment_get_variable("PATH"), ':');
-      in.insert(in.end(), epath.begin(), epath.end()); thread_result.clear();
+      vector<string> in = string_split(dnames, '\n');
       struct dir_ite_struct new_struct; 
-      new_struct.vec   = in; 
-      new_struct.index = 0;
+      new_struct.vec      = in; 
+      new_struct.index    = 0;
       #if defined(_WIN32)
-      new_struct.ino   = info2.FileId;
-      new_struct.dev   = info2.VolumeSerialNumber;
-      new_struct.fd    = fd;
+      new_struct.nlink    = info.nNumberOfLinks;
+      new_struct.ino_high = info.nFileIndexHigh;
+      new_struct.ino_low  = info.nFileIndexLow;
+      new_struct.dev      = info.dwVolumeSerialNumber;
+      new_struct.fd       = fd;
       #else
-      new_struct.ino   = info.st_ino; 
-      new_struct.dev   = info.st_dev;
+      new_struct.nlink    = info.st_nlinks;
+      new_struct.ino      = info.st_ino; 
+      new_struct.dev      = info.st_dev;
       #endif
-      pthread_create(&t, nullptr, directory_iterator_thread, (void *)&new_struct);
-      message_pump(); pthread_join(t, nullptr); 
-      for (unsigned i = 0; i < thread_result.size(); i++) {
-        message_pump(); path += thread_result[i] + "\n";
+      file_bin_pathname_helper(&new_struct);
+      for (unsigned i = 0; i < file_bin_pathname_result.size(); i++) {
+        message_pump(); path += file_bin_pathname_result[i] + "\n";
       }
       if (!path.empty()) {
         path.pop_back();
