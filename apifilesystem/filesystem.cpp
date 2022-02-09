@@ -243,8 +243,10 @@ namespace ngs::fs {
     string filename_remove_slash(string dname, bool canonical = false) {
       if (canonical) dname = ngs::fs::filename_canonical(dname);
       #if defined(_WIN32)
-      while (dname.back() == '\\' || dname.back() == '/') {
-        message_pump(); dname.pop_back();
+      ghc::filesystem::path p = dname;
+      while ((dname.back() == '\\' || dname.back() == '/') && 
+        (p.root_name().string() + "\\" != dname && p.root_name().string() + "/" != dname)) {
+        message_pump(); p = dname; dname.pop_back();
       }
       #else
       while (dname.back() == '/' && (!dname.empty() && dname[0] != '/' && dname.length() != 1)) {
@@ -269,8 +271,9 @@ namespace ngs::fs {
       unsigned index;
       unsigned nlink;
       #if defined(_WIN32)
-      _ino_t ino;
-      _dev_t dev;
+      FILE_ID_128 ino;
+      unsigned long long dev;
+      int fd;
       #else
       ino_t ino;
       dev_t dev;
@@ -284,19 +287,25 @@ namespace ngs::fs {
       if (!directory_exists(s->vec[s->index])) return nullptr;
       s->vec[s->index] = filename_remove_slash(s->vec[s->index], true);
       const ghc::filesystem::path path = ghc::filesystem::path(s->vec[s->index]);
-      if (directory_exists(s->vec[s->index])) {
+      if (directory_exists(s->vec[s->index]) || path.root_name().string() + "\\" == path.string()) {
         ghc::filesystem::directory_iterator end_itr;
         for (ghc::filesystem::directory_iterator dir_ite(path, ec); dir_ite != end_itr; dir_ite.increment(ec)) {
           message_pump(); if (ec.value() != 0) { break; }
           ghc::filesystem::path file_path = ghc::filesystem::path(filename_absolute(dir_ite->path().string()));
           #if defined(_WIN32)
-          struct _stat info = { 0 }; 
-          if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !_stat(file_path.string().c_str(), &info)) {
+          struct _stat info  = { 0 }; 
+          FILE_ID_INFO info2 = { 0 }; int fd = -1;
+          if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !_wstat(file_path.wstring().c_str(), &info) &&
+            ((fd = _wopen(file_path.wstring().c_str(), _O_RDONLY, _S_IREAD)) != -1)) {
+            bool matches = (info2.FileId == s->ino && info2.VolumeSerialNumber == s->dev);
+            bool success =  GetFileInformationByHandleEx((HANDLE)_get_osfhandle(fd), FileIdInfo, &info2, sizeof(info2));
+            if (fd != s->fd) _close(fd);
+            if (matches && success) {
           #else
           struct stat info = { 0 }; 
           if (ghc::filesystem::exists(file_path, ec) && ec.value() == 0 && !stat(file_path.string().c_str(), &info)) {
-          #endif
             if (info.st_ino == s->ino && info.st_dev == s->dev) {
+          #endif
               thread_result.push_back(file_path.string());
               if (thread_result.size() >= info.st_nlink) {
                 s->nlink = info.st_nlink; s->vec.clear();
@@ -383,29 +392,45 @@ namespace ngs::fs {
   string file_bin_pathname(int fd) {
     string path;
     #if defined(_WIN32)
-    struct _stat info = { 0 };
-    if (!_fstat(fd, &info) && 0 < info.st_nlink) {
+    struct _stat info  = { 0 };
+    FILE_ID_INFO info2 = { 0 };
+    if (!_fstat(fd, &info) && 0 < info.st_nlink &&
+      GetFileInformationByHandleEx((HANDLE)_get_osfhandle(fd), FileIdInfo, &info2, sizeof(info2))) {
     #else
     struct stat info = { 0 };
     if (!fstat(fd, &info) && 0 < info.st_nlink) {
     #endif
       pthread_t t; 
       vector<string> in; 
-      in.push_back("/");
+      unsigned size = GetLogicalDriveStrings(0, nullptr);
+      if (size) {
+        wchar_t *buffer = new wchar_t[size]();
+        size = GetLogicalDriveStringsW(size, buffer);
+        if (size) {
+          wchar_t *p = buffer; unsigned i = 0;
+          while (*p != L'\0' && i < size) {
+            in.push_back(narrow(p));
+            p += wcsnlen(p, size) + 1;
+            i++;
+          }
+        }
+        delete[] buffer;
+      }
       in.push_back(directory_get_temporary_path());
-      #if defined(_WIN32)
-      in.push_back(environment_expand_variables("${HOMEDRIVE}${HOMEPATH}"));
-      vector<string> epath = string_split(environment_get_variable("PATH"), ';');
-      #else
       in.push_back(environment_get_variable("HOME"));
       vector<string> epath = string_split(environment_get_variable("PATH"), ':');
-      #endif
       in.insert(in.end(), epath.begin(), epath.end()); thread_result.clear();
       struct dir_ite_struct new_struct; 
-      new_struct.vec = in; 
+      new_struct.vec   = in; 
       new_struct.index = 0;
-      new_struct.ino = info.st_ino; 
-      new_struct.dev = info.st_dev;
+      #if defined(_WIN32)
+      new_struct.ino   = info2.FileId;
+      new_struct.dev   = info2.VolumeSerialNumber;
+      new_struct.fd    = fd;
+      #else
+      new_struct.ino   = info.st_ino; 
+      new_struct.dev   = info.st_dev;
+      #endif
       pthread_create(&t, nullptr, directory_iterator_thread, (void *)&new_struct);
       message_pump(); pthread_join(t, nullptr); 
       for (unsigned i = 0; i < thread_result.size(); i++) {
