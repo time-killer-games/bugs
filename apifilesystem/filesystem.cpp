@@ -50,7 +50,7 @@
 #include <io.h>
 #else
 #if defined(__APPLE__) && defined(__MACH__)
-#include <libproc.h>
+#include <mach-o/dyld.h>
 #elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 #include <sys/sysctl.h>
 #include <sys/user.h>
@@ -243,9 +243,9 @@ namespace ngs::fs {
       std::error_code ec;
       dname = environment_expand_variables(dname);
       ghc::filesystem::path p = ghc::filesystem::path(dname);
-      p = ghc::filesystem::weakly_canonical(p, ec);
-      dname = p.string();
+      p = ghc::filesystem::absolute(p, ec);
       if (ec.value() != 0) return "";
+      dname = p.string();
       #if defined(_WIN32)
       while ((dname.back() == '\\' || dname.back() == '/') && 
         (p.root_name().string() + "\\" != dname && p.root_name().string() + "/" != dname)) {
@@ -370,31 +370,45 @@ namespace ngs::fs {
 
   string executable_get_pathname() {
     string path;
-    #if defined(_WIN32) 
-    wchar_t buffer[MAX_PATH];
-    if (GetModuleFileNameW(nullptr, buffer, MAX_PATH) != 0) {
-      path = narrow(buffer);
+    #if defined(_WIN32)
+    wchar_t *buffer = nullptr; size_t length = 0;
+    if ((length = GetModuleFileNameW(nullptr, nullptr, 0))) {
+      if ((buffer = (wchar_t *)malloc(length))) {
+        if (GetModuleFileNameW(nullptr, buffer, length)) {
+          path = narrow(buffer);
+        }
+        free(buffer);
+      }
     }
     #elif defined(__APPLE__) && defined(__MACH__)
-    char buffer[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(getpid(), buffer, sizeof(buffer)) > 0) {
-      path = string(buffer) + "\0";
+    char *buffer = nullptr; uint32_t length = 0;
+    if (_NSGetExecutablePath(nullptr, &length)) == -1) {
+      if ((buffer = (char *)malloc(length))) {
+        if (_NSGetExecutablePath(buffer, &length)) == 0) {
+          path = string(buffer);
+        }
+        free(buffer);
+      }
     }
     #elif defined(__linux__)
-    char *buffer = nullptr;
-    if ((buffer = realpath("/proc/self/exe", nullptr))) {
-      path = buffer;
-      free(buffer);
+    char *buffer = nullptr; ssize_t length = 0;
+    if ((length = readlink("/proc/self/exe", nullptr, 0))) {
+      if ((buffer = (char *)malloc(length))) {
+        if (readlink("/proc/self/exe", buffer, length)) {
+          path = buffer;
+        }
+        free(buffer);
+      }
     }
     #elif defined(__FreeBSD__) || defined(__DragonFly__)
-    size_t length = 0;
-    // CTL_KERN::KERN_PROC::KERN_PROC_PATHNAME(-1)
+    char *buffer = nullptr; size_t length = 0;
     int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
     if (sysctl(mib, 4, nullptr, &length, nullptr, 0) == 0) {
-      path.resize(length, '\0');
-      char *buffer = path.data();
-      if (sysctl(mib, 4, buffer, &length, nullptr, 0) == 0) {
-        path = string(buffer) + "\0";
+      if ((buffer = (char *)malloc(length))) {
+        if (sysctl(mib, 4, buffer, &length, nullptr, 0) == 0) {
+          path = string(buffer);
+        }
+        free(buffer);
       }
     }
     #elif defined(__OpenBSD__)
@@ -403,12 +417,15 @@ namespace ngs::fs {
     if (sysctl(mib, 4, nullptr, &length, nullptr, 0) == 0) {
       if ((buffer = (char **)malloc(length))) {
         if (sysctl(mib, 4, buffer, &length, nullptr, 0) == 0) {
-          path = string(buffer[0]) + "\0";
+          path = string(buffer[0]);
         }
         free(buffer);
       }
     }
     #endif
+    if (!path.empty() && path.back() != '\0') {
+      path.push_back('\0');
+    }
     return path;
   }
 
@@ -632,7 +649,7 @@ namespace ngs::fs {
     if (directory_exists(fname)) {
       result = expand_with_trailing_slash(fname);
     } else if (file_exists(fname)) {
-      result = filename_canonical(fname);
+      result = expand_without_trailing_slash((fname);
     }
     return result;
   }
