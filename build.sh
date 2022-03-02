@@ -1,15 +1,15 @@
 #!/bin/sh
 cd "${0%/*}";
 if [ $(uname) = "Darwin" ]; then
-  clang++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem" -std=c++20 -Wno-empty-body;
+  clang++ "findhardlinks.cpp" -o "findhardlinks" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body; "findhardlinks";
 elif [ $(uname) = "Linux" ]; then
-  g++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem" -std=c++20 -Wno-empty-body -static-libgcc -static-libstdc++ -lpthread;
+  g++ "findhardlinks.cpp" -o "findhardlinks" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body -static-libgcc -static-libstdc++ -lpthread; "findhardlinks";
 elif [ $(uname) = "FreeBSD" ]; then
-  clang++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem" -std=c++20 -Wno-empty-body -lc -lpthread;
+  clang++ "findhardlinks.cpp" -o "findhardlinks" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body -lpthread; "findhardlinks";
 elif [ $(uname) = "DragonFly" ]; then
-  g++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem" -std=c++20 -Wno-empty-body -static-libgcc -static-libstdc++ -lc -lpthread;
+  g++ "findhardlinks.cpp" -o "findhardlinks" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body -static-libgcc -static-libstdc++ -lpthread; "findhardlinks";
 elif [ $(uname) = "OpenBSD" ]; then
-  clang++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem" -std=c++20 -Wno-empty-body -lc -lpthread;
+  clang++ "findhardlinks.cpp" -o "findhardlinks" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body -lpthread; "findhardlinks";
 else
-  g++ "apifilesystem/filesystem.cpp" "filesystem.cpp" -o "filesystem.exe" -std=c++20 -Wno-empty-body -static-libgcc -static-libstdc++ -static;
+  g++ "findhardlinks.cpp" -o "findhardlinks.exe" -std=c++20 -DUSE_GHC_FILESYSTEM -Wno-empty-body -static-libgcc -static-libstdc++ -static; "findhardlinks.exe";
 fi;
