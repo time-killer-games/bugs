@@ -212,7 +212,7 @@ namespace {
     return false;
   }
 
-} // anonymous namspace
+} // anonymous namespace
 
 int main(int argc, char **argv) {
   int fd = file_open_from_string(filename_name(argv[0] ? argv[0] : "(null)")); 
