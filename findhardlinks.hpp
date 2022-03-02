@@ -47,12 +47,12 @@ namespace findhardlinks {
     }
 
     #if defined(_WIN32) 
-    inline wstd::string widen(std::string str) {
+    inline std::wstring widen(std::string str) {
       std::size_t wchar_count = str.size() + 1; std::vector<wchar_t> buf(wchar_count);
       return std::wstring{ buf.data(), (std::size_t)MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buf.data(), (int)wchar_count) };
     }
 
-    inline std::string narrow(wstd::string wstr) {
+    inline std::string narrow(std::wstring wstr) {
       int nbytes = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), nullptr, 0, nullptr, nullptr); std::vector<char> buf(nbytes);
       return string{ buf.data(), (std::size_t)WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), buf.data(), nbytes, nullptr, nullptr) };
     }
@@ -62,7 +62,7 @@ namespace findhardlinks {
       #if defined(_WIN32)
       std::string value;
       wchar_t buffer[32767];
-      wstd::string u8name = widen(name);
+      std::wstring u8name = widen(name);
       if (GetEnvironmentVariableW(u8name.c_str(), buffer, 32767) != 0) {
         value = narrow(buffer);
       }
@@ -77,7 +77,7 @@ namespace findhardlinks {
       #if defined(_WIN32)
       std::string value;
       wchar_t buffer[32767];
-      wstd::string u8name = widen(name);
+      std::wstring u8name = widen(name);
       GetEnvironmentVariableW(u8name.c_str(), buffer, 32767);
       return (GetLastError() != ERROR_ENVVAR_NOT_FOUND);
       #else
@@ -188,7 +188,7 @@ namespace findhardlinks {
           BY_HANDLE_FILE_INFORMATION info = { 0 };
           if (file_exists(file_path.string())) {
             // printf("%s\n", file_path.string().c_str());
-            if (!_wsopen_s(&fd, file_path.std::wstring().c_str(), _O_RDONLY, _SH_DENYNO, _S_IREAD)) {
+            if (!_wsopen_s(&fd, file_path.wstring().c_str(), _O_RDONLY, _SH_DENYNO, _S_IREAD)) {
               bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
               bool matches = (info.ftLastWriteTime.dwLowDateTime == s->info.ftLastWriteTime.dwLowDateTime && 
                 info.ftLastWriteTime.dwHighDateTime == s->info.ftLastWriteTime.dwHighDateTime && 
