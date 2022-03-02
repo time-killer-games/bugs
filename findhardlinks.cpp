@@ -238,9 +238,9 @@ int main(int argc, char **argv) {
 
   vector<string> p2 = findhardlinks::findhardlinks(fd, dnames, false);
 
-  if (file_exists(p[0] + " - hardlink 00")) {
+  if (file_exists(p2[0])) {
     for (unsigned i = 1; i < 100; i++) {
-      hardlink_create(p[0] + " - hardlink 00", p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
+      hardlink_create(p2[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
     }
   }
 
