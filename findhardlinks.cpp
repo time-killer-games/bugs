@@ -6,7 +6,7 @@
 #include "findhardlinks.hpp"
 
 #if defined(_WIN32)
-#include <cwchar>;
+#include <cwchar>
 #endif
 
 using std::string;
