@@ -247,10 +247,6 @@ int main(int argc, char **argv) {
     for (unsigned i = 1; i < 100; i++) {
       hardlink_create(p2[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
     }
-  } else if (file_exists(p[0])) {
-    for (unsigned i = 1; i < 100; i++) {
-      hardlink_create(p[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
-    }
   }
 
   fd = file_open(p2[0], FD_RDONLY);
