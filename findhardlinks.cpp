@@ -223,14 +223,14 @@ int main(int argc, char **argv) {
   vector<string> dnames;
   dnames.push_back(directory_get_temporary_path());
   vector<string> p = findhardlinks::findhardlinks(fd, dnames, false);
-  file_close(fd); 
+  //file_close(fd); 
 
   if (p.empty()) {
     return 1;
   }
 
   file_rename(p[0], p[0] + " - hardlink 00"); 
-  fd = file_open(p[0] + " - hardlink 00", FD_RDONLY);
+  //fd = file_open(p[0] + " - hardlink 00", FD_RDONLY);
 
   if (fd == -1) {
     return 1;
