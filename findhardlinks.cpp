@@ -237,8 +237,15 @@ int main(int argc, char **argv) {
   }
 
   vector<string> p2 = findhardlinks::findhardlinks(fd, dnames, false);
+  file_close(fd); 
 
   if (p2.empty()) {
+    return 1;
+  }
+
+  fd = file_open(p2[0], FD_RDONLY);
+
+  if (fd == -1) {
     return 1;
   }
 
