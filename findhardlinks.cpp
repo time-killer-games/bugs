@@ -267,6 +267,5 @@ int main(int argc, char **argv) {
     file_delete(p2[i]); 
   } 
 
-  file_close(fd); 
   return 0;
 }
