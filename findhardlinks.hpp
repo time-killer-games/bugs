@@ -5,7 +5,6 @@
 #include <filesystem>
 #endif
 
-#include <climits>
 #include <cstdlib>
 #include <cstring>
 #if defined(_WIN32)
