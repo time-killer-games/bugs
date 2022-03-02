@@ -245,7 +245,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  p2.clear();
   p2 = findhardlinks::findhardlinks(fd, dnames, false);
   file_close(fd); 
 
