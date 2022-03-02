@@ -18,6 +18,14 @@ using std::wstring;
 
 namespace {
 
+  enum {
+    FD_RDONLY,
+    FD_WRONLY,
+    FD_RDWR,
+    FD_APPEND,
+    FD_RDAP
+  };
+
   void message_pump() {
     #if defined(_WIN32) 
     MSG msg; while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -111,6 +119,36 @@ namespace {
     return fd;
   }
 
+  int file_open(string fname, int mode) {
+    #if defined(_WIN32)
+    wstring wfname = widen(fname);
+    FILE *fp = nullptr;
+    switch (mode) {
+      case  0: { if (!_wfopen_s(&fp, wfname.c_str(), L"rb, ccs=UTF-8" )) break; return -1; }
+      case  1: { if (!_wfopen_s(&fp, wfname.c_str(), L"wb, ccs=UTF-8" )) break; return -1; }
+      case  2: { if (!_wfopen_s(&fp, wfname.c_str(), L"w+b, ccs=UTF-8")) break; return -1; }
+      case  3: { if (!_wfopen_s(&fp, wfname.c_str(), L"ab, ccs=UTF-8" )) break; return -1; }
+      case  4: { if (!_wfopen_s(&fp, wfname.c_str(), L"a+b, ccs=UTF-8")) break; return -1; }
+      default: return -1;
+    }
+    if (fp) { int fd = _dup(_fileno(fp));
+    fclose(fp); return fd; }
+    #else
+    FILE *fp = nullptr;
+    switch (mode) {
+      case  0: { fp = fopen(fname.c_str(), "rb" ); break; }
+      case  1: { fp = fopen(fname.c_str(), "wb" ); break; }
+      case  2: { fp = fopen(fname.c_str(), "w+b"); break; }
+      case  3: { fp = fopen(fname.c_str(), "ab" ); break; }
+      case  4: { fp = fopen(fname.c_str(), "a+b"); break; }
+      default: return -1;
+    }
+    if (fp) { int fd = dup(fileno(fp));
+    fclose(fp); return fd; }
+    #endif
+    return -1;
+  }
+
   int file_close(int fd) {
     #if defined(_WIN32)
     return _close(fd);
@@ -185,6 +223,7 @@ int main(int argc, char **argv) {
   vector<string> dnames;
   dnames.push_back(directory_get_temporary_path());
   vector<string> p = findhardlinks::findhardlinks(fd, dnames, false);
+  file_close(fd); 
 
   if (p.empty()) {
     return 1;
@@ -192,6 +231,12 @@ int main(int argc, char **argv) {
 
   vector<string> p2;
   file_rename(p[0], p[0] + " - hardlink 00"); 
+  fd = file_open(p[0] + " - hardlink 00", FD_RDONLY);
+
+  if (fd == -1) {
+    return 1;
+  }  
+
   p2 = findhardlinks::findhardlinks(fd, dnames, false);
 
   for (unsigned i = 1; i < 100; i++) {
