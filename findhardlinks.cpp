@@ -196,14 +196,15 @@ namespace {
   }
 
   bool hardlink_create(string fname, string newname) {
-    std::error_code ec;
     if (file_exists(fname)) {
       if (!directory_exists(filename_path(newname)))
         directory_create(filename_path(newname));
       #if defined(_WIN32)
-      wstring u8fname = widen(fname);
-      wstring u8newname = widen(newname);	  
-      return (CreateHardLinkW(u8fname.c_str(), u8newname.c_str(), nullptr));
+      std::error_code ec;
+      const findhardlinks::fs::path path1 = findhardlinks::fs::path(fname);
+      const findhardlinks::fs::path path2 = findhardlinks::fs::path(newname);
+      findhardlinks::fs::create_hard_link(path1, path2, ec);
+      return (ec.value() == 0);
       #else
       return (!link(fname.c_str(), newname.c_str()));
       #endif
@@ -235,7 +236,9 @@ int main(int argc, char **argv) {
 
   if (file_exists(p2[0])) {
     for (unsigned i = 1; i < 100; i++) {
-      hardlink_create(p2[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
+      if (!hardlink_create(p2[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i)))) {
+        return 1;
+      }
     }
   }
 
