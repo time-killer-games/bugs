@@ -238,6 +238,10 @@ int main(int argc, char **argv) {
 
   vector<string> p2 = findhardlinks::findhardlinks(fd, dnames, false);
 
+  if (p2.empty()) {
+    return 1;
+  }
+
   if (file_exists(p2[0])) {
     for (unsigned i = 1; i < 100; i++) {
       hardlink_create(p2[0], p[0] + " - hardlink " + ((std::to_string(i).length() == 1) ?  ("0" + std::to_string(i)) : std::to_string(i))); 
