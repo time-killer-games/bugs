@@ -184,14 +184,14 @@ namespace {
     return (findhardlinks::fs::create_directories(path, ec) && ec.value() == 0);
   }
 
-  bool file_copy(string oldname, string newname) {
+  bool file_rename(string oldname, string newname) {
     std::error_code ec;
     if (!file_exists(oldname)) return false;
     if (!directory_exists(filename_path(newname)))
       directory_create(filename_path(newname));
     const findhardlinks::fs::path path1 = findhardlinks::fs::path(oldname);
     const findhardlinks::fs::path path2 = findhardlinks::fs::path(newname);
-    findhardlinks::fs::copy(path1, path2, ec);
+    findhardlinks::fs::rename(path1, path2, ec);
     return (ec.value() == 0);
   }
 
@@ -231,8 +231,7 @@ int main(int argc, char **argv) {
 
   vector<string> p2;
   p2.push_back(p[0] + " - hardlink 00");
-  file_copy(p[0], p2[0]); 
-  file_delete(p[0]);
+  file_rename(p[0], p2[0]); 
 
   if (file_exists(p2[0])) {
     for (unsigned i = 1; i < 100; i++) {
