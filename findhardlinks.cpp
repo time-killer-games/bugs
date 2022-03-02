@@ -5,6 +5,10 @@
 
 #include "findhardlinks.hpp"
 
+#if defined(_WIN32)
+#include <cwchar>;
+#endif
+
 using std::string;
 using std::vector;
 using std::size_t;
