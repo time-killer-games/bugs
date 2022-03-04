@@ -36,6 +36,8 @@ namespace findhardlinks {
 
   namespace {
 
+    /* necessary in GUI windows applications to process window
+    clicks without crashing during lasting for/while loops. */
     inline void message_pump() {
       #if defined(_WIN32) 
       MSG msg; while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -46,17 +48,20 @@ namespace findhardlinks {
     }
 
     #if defined(_WIN32) 
+    // UTF-8 support on Windows: string to wstring.
     inline std::wstring widen(std::string str) {
       std::size_t wchar_count = str.size() + 1; std::vector<wchar_t> buf(wchar_count);
       return std::wstring{ buf.data(), (std::size_t)MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buf.data(), (int)wchar_count) };
     }
 
+    // UTF-8 support on Windows: wstring to string.
     inline std::string narrow(std::wstring wstr) {
       int nbytes = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), nullptr, 0, nullptr, nullptr); std::vector<char> buf(nbytes);
       return std::string{ buf.data(), (std::size_t)WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), buf.data(), nbytes, nullptr, nullptr) };
     }
     #endif
 
+    // optional: get environment variable value.
     inline std::string environment_get_variable(std::string name) {
       #if defined(_WIN32)
       std::string value;
@@ -72,6 +77,7 @@ namespace findhardlinks {
       #endif
     }
 
+    // optional: check if environment variable exists.
     inline bool environment_get_variable_exists(std::string name) {
       #if defined(_WIN32)
       std::string value;
@@ -84,6 +90,7 @@ namespace findhardlinks {
       #endif
     }
 
+    // optional: expand ${ENVVAR} in strings.
     inline std::string environment_expand_variables(std::string str) {
       if (str.find("${") == std::string::npos) return str;
       std::string pre = str.substr(0, str.find("${"));
@@ -97,6 +104,8 @@ namespace findhardlinks {
       return environment_expand_variables(pre + value + post);
     }
 
+    /* force absolute path and remove trailing slashes;
+    keep trailing slash at the end if drive/fs root. */
     inline std::string expand_without_trailing_slash(std::string dname) {
       std::error_code ec;
       dname = environment_expand_variables(dname);
@@ -117,6 +126,7 @@ namespace findhardlinks {
       return dname;
     }
 
+    // force absolute path and add trailing slash.
     inline std::string expand_with_trailing_slash(std::string dname) {
       dname = expand_without_trailing_slash(dname);
       #if defined(_WIN32)
@@ -127,6 +137,7 @@ namespace findhardlinks {
       return dname;
     }
 
+    // check if regular file (non-directory) exists.
     inline bool file_exists(std::string fname) {
       std::error_code ec;
       fname = expand_without_trailing_slash(fname);
@@ -135,6 +146,7 @@ namespace findhardlinks {
         (!fs::is_directory(path, ec)) && ec.value() == 0);
     }
 
+    // check if directory exists.
     inline bool directory_exists(std::string dname) {
       std::error_code ec;
       dname = expand_without_trailing_slash(dname);
@@ -144,6 +156,7 @@ namespace findhardlinks {
         fs::is_directory(path, ec) && ec.value() == 0);
     }
 
+    // convert relative path to absolute path, when applicable.
     inline std::string filename_absolute(std::string fname) {
       std::string result;
       if (directory_exists(fname)) {
@@ -154,6 +167,7 @@ namespace findhardlinks {
       return result;
     }
 
+    // find hardlinks helper struct.
     struct findhardlinks_struct {
       std::vector<std::string> vec;
       bool recursive;
@@ -165,8 +179,8 @@ namespace findhardlinks {
       #endif
     };
 
-    /* fs::equivalent would be useful here but sadly it does 
-    not support passing a file descriptor and only accepts a file path */
+    /* find hardlinks directory iterator: search for equal files
+    like std::filesystem::equivalent but passing fd not path. */
     std::vector<std::string> findhardlinks_result;
     inline void findhardlinks_helper(findhardlinks_struct *s) {
       #if defined(_WIN32)
@@ -197,8 +211,7 @@ namespace findhardlinks {
               if (matches && success) {
                 findhardlinks_result.push_back(file_path.string());
                 if (findhardlinks_result.size() >= info.nNumberOfLinks) {
-                  s->info.nNumberOfLinks = info.nNumberOfLinks; 
-                  s->vec.clear();
+                  s->info.nNumberOfLinks = info.nNumberOfLinks; s->vec.clear();
                   _close(fd);
                   return;
                 }
@@ -213,8 +226,8 @@ namespace findhardlinks {
             if (!stat(file_path.string().c_str(), &info)) {
               if (info.st_dev == s->info.st_dev && info.st_ino == s->info.st_ino && 
                 info.st_size == s->info.st_size && info.st_mtime == s->info.st_mtime) {
-                findhardlinks_result.push_back(file_path.string());
-                if (findhardlinks_result.size() >= info.st_nlink) {
+               findhardlinks_result.push_back(file_path.string());
+               if (findhardlinks_result.size() >= info.st_nlink) {
                   s->info.st_nlink = info.st_nlink; s->vec.clear();
                   return;
                 }
@@ -229,14 +242,15 @@ namespace findhardlinks {
           }
         }
       }
-      while (s->index < s->vec.size() - 1) {
+      while (s->index < s->vec.size() - 2) {
         message_pump(); s->index++;
         findhardlinks_helper(s);
       }
     }
 
- } // anonymous namespace
+  } // anonymous namespace
 
+  // the actual function to call.
   inline std::vector<std::string> findhardlinks(int fd, std::vector<std::string> dnames, bool recursive) {
     std::vector<std::string> paths;
     #if defined(_WIN32)
