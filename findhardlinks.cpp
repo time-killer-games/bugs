@@ -26,7 +26,7 @@ namespace {
     FD_RDAP
   };
 
-  /* necessary in GUI windows applications to process window
+  /* necessary in GUI Windows applications to process window
   clicks without crashing during lasting for/while loops. */
   void message_pump() {
     #if defined(_WIN32) 
