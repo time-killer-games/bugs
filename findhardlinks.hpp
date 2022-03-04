@@ -242,7 +242,7 @@ namespace findhardlinks {
           }
         }
       }
-  #if defined(_WIN32)
+      #if defined(_WIN32)
       while (findhardlinks_result.size() < s->info.nNumberOfLinks) {
       #else
       while (findhardlinks_result.size() < s->info.st_nlink) {
