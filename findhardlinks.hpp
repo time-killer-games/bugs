@@ -169,9 +169,11 @@ namespace findhardlinks {
 
     // find hardlinks helper struct.
     struct findhardlinks_struct {
-      std::vector<std::string> vec;
+      std::vector<std::string> x;
+      std::vector<std::string> y;
       bool recursive;
-      unsigned index;
+      unsigned i;
+      unsigned j;
       #if defined(_WIN32)
       BY_HANDLE_FILE_INFORMATION info;
       #else
@@ -188,67 +190,65 @@ namespace findhardlinks {
       #else
       if (findhardlinks_result.size() >= s->info.st_nlink) return;
       #endif
-      std::error_code ec; if (!directory_exists(s->vec[s->index])) return;
-      s->vec[s->index] = expand_without_trailing_slash(s->vec[s->index]);
-      const fs::path path = fs::path(s->vec[s->index]);
-      if (directory_exists(s->vec[s->index]) || path.root_name().string() + "\\" == path.string()) {
-        fs::directory_iterator end_itr;
-        for (fs::directory_iterator dir_ite(path, ec); dir_ite != end_itr; dir_ite.increment(ec)) {
-          message_pump(); if (ec.value() != 0) { break; }
-          fs::path file_path = fs::path(filename_absolute(dir_ite->path().string()));
-          #if defined(_WIN32)
-          int fd = -1;
-          BY_HANDLE_FILE_INFORMATION info = { 0 };
-          if (file_exists(file_path.string())) {
-            // printf("%s\n", file_path.string().c_str());
-            if (!_wsopen_s(&fd, file_path.wstring().c_str(), _O_RDONLY, _SH_DENYNO, _S_IREAD)) {
-              bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
-              bool matches = (info.ftLastWriteTime.dwLowDateTime == s->info.ftLastWriteTime.dwLowDateTime && 
-                info.ftLastWriteTime.dwHighDateTime == s->info.ftLastWriteTime.dwHighDateTime && 
-                info.nFileIndexHigh == s->info.nFileIndexHigh && info.nFileIndexLow == s->info.nFileIndexLow &&
-                info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
-                info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
-              if (matches && success) {
-                findhardlinks_result.push_back(file_path.string());
-                if (findhardlinks_result.size() >= info.nNumberOfLinks) {
-                  s->info.nNumberOfLinks = info.nNumberOfLinks; s->vec.clear();
-                  _close(fd);
-                  return;
+      if (!s->x.empty()) {
+        std::error_code ec; if (!directory_exists(s->x[s->i])) return;
+        s->x[s->i] = expand_without_trailing_slash(s->x[s->i]);
+        const fs::path path = fs::path(s->x[s->i]);
+        if (directory_exists(s->x[s->i]) || path.root_name().string() + "\\" == path.string()) {
+          fs::directory_iterator end_itr;
+          for (fs::directory_iterator dir_ite(path, ec); dir_ite != end_itr; dir_ite.increment(ec)) {
+            message_pump(); if (ec.value() != 0) { break; }
+            fs::path file_path = fs::path(filename_absolute(dir_ite->path().string()));
+            #if defined(_WIN32)
+            int fd = -1;
+            BY_HANDLE_FILE_INFORMATION info = { 0 };
+            if (file_exists(file_path.string())) {
+              // printf("%s\n", file_path.string().c_str());
+              if (!_wsopen_s(&fd, file_path.wstring().c_str(), _O_RDONLY, _SH_DENYNO, _S_IREAD)) {
+                bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
+                bool matches = (info.ftLastWriteTime.dwLowDateTime == s->info.ftLastWriteTime.dwLowDateTime && 
+                  info.ftLastWriteTime.dwHighDateTime == s->info.ftLastWriteTime.dwHighDateTime && 
+                  info.nFileiHigh == s->info.nFileiHigh && info.nFileiLow == s->info.nFileiLow &&
+                  info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
+                  info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
+                if (matches && success) {
+                  findhardlinks_result.push_back(file_path.string());
+                  if (findhardlinks_result.size() >= info.nNumberOfLinks) {
+                   s->info.nNumberOfLinks = info.nNumberOfLinks; s->x.clear();
+                    _close(fd);
+                    return;
+                  }
                 }
-              }
-              _close(fd);
-            }
-          }
-          #else
-          struct stat info = { 0 }; 
-          if (file_exists(file_path.string())) {
-            // printf("%s\n", file_path.string().c_str());
-            if (!stat(file_path.string().c_str(), &info)) {
-              if (info.st_dev == s->info.st_dev && info.st_ino == s->info.st_ino && 
-                info.st_size == s->info.st_size && info.st_mtime == s->info.st_mtime) {
-                findhardlinks_result.push_back(file_path.string());
-                if (findhardlinks_result.size() >= info.st_nlink) {
-                  s->info.st_nlink = info.st_nlink; s->vec.clear();
-                  return;
-                }
+                 _close(fd);
               }
             }
-          }
-          #endif
-          if (s->recursive && directory_exists(file_path.string())) {
-            // printf("%s\n", file_path.string().c_str());
-            s->vec.push_back(file_path.string());
-            s->index++; findhardlinks_helper(s);
+            #else
+            struct stat info = { 0 }; 
+            if (file_exists(file_path.string())) {
+              // printf("%s\n", file_path.string().c_str());
+              if (!stat(file_path.string().c_str(), &info)) {
+                if (info.st_dev == s->info.st_dev && info.st_ino == s->info.st_ino && 
+                  info.st_size == s->info.st_size && info.st_mtime == s->info.st_mtime) {
+                 findhardlinks_result.push_back(file_path.string());
+                  if (findhardlinks_result.size() >= info.st_nlink) {
+                  s->info.st_nlink = info.st_nlink; s->x.clear();
+                    return;
+                  }
+                }
+              }
+            }
+            #endif
+            if (s->recursive && directory_exists(file_path.string())) {
+              // printf("%s\n", file_path.string().c_str());
+              s->x.push_back(file_path.string());
+              s->i++; findhardlinks_helper(s);
+            }
           }
         }
       }
-      #if defined(_WIN32)
-      while (findhardlinks_result.size() < s->info.nNumberOfLinks) {
-      #else
-      while (findhardlinks_result.size() < s->info.st_nlink) {
-      #endif
-        message_pump(); s->index++;
-        findhardlinks_helper(s);
+      while (s->j < s->y.size() && directory_exists(s->y[s->j])) {
+        message_pump(); s->x.clear(); s->x.push_back(s->y[s->j]);
+        s->j++; findhardlinks_helper(s);
       }
     }
 
@@ -266,8 +266,13 @@ namespace findhardlinks {
     #endif
       findhardlinks_result.clear();
       struct findhardlinks_struct s; 
-      s.vec             = dnames;
-      s.index           = 0;
+      std::vector<std::string> first;
+      first.push_back(dnames[0]);
+      dnames.erase(dnames.begin());
+      s.x               = first;
+      s.y               = dnames;
+      s.i               = 0;
+      s.j               = 0;
       s.recursive       = recursive;
       s.info            = info;
       findhardlinks_helper(&s);
