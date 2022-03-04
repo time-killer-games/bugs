@@ -209,8 +209,8 @@ namespace findhardlinks {
                 info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
                 info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
               if (matches && success) {
-                findhardlinks_result.push_back(file_path.string());
-                if (findhardlinks_result.size() >= info.nNumberOfLinks) {
+                 findhardlinks_result.push_back(file_path.string());
+                 if (findhardlinks_result.size() >= info.nNumberOfLinks) {
                   s->info.nNumberOfLinks = info.nNumberOfLinks; s->vec.clear();
                   _close(fd);
                   return;
