@@ -26,17 +26,6 @@ namespace {
     FD_RDAP
   };
 
-  /* necessary in GUI Windows applications to process window
-  clicks without crashing during lasting for/while loops. */
-  void message_pump() {
-    #if defined(_WIN32) 
-    MSG msg; while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    }
-    #endif
-  }
-
   #if defined(_WIN32) 
   // UTF-8 support on Windows: string to wstring.
   wstring widen(string str) {
