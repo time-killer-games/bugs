@@ -44,7 +44,6 @@ namespace {
   string string_replace_all(string str, string substr, string nstr) {
     size_t pos = 0;
     while ((pos = str.find(substr, pos)) != string::npos) {
-      message_pump();
       str.replace(pos, substr.length(), nstr);
       pos += nstr.length();
     }
