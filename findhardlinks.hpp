@@ -190,7 +190,7 @@ namespace findhardlinks {
       #else
       if (findhardlinks_result.size() >= s->info.st_nlink) return;
       #endif
-      if (!s->x.empty()) {
+      if (s->i < s->x.size()) {
         std::error_code ec; if (!directory_exists(s->x[s->i])) return;
         s->x[s->i] = expand_without_trailing_slash(s->x[s->i]);
         const fs::path path = fs::path(s->x[s->i]);
@@ -208,7 +208,7 @@ namespace findhardlinks {
                 bool success = GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info);
                 bool matches = (info.ftLastWriteTime.dwLowDateTime == s->info.ftLastWriteTime.dwLowDateTime && 
                   info.ftLastWriteTime.dwHighDateTime == s->info.ftLastWriteTime.dwHighDateTime && 
-                  info.nFileiHigh == s->info.nFileiHigh && info.nFileiLow == s->info.nFileiLow &&
+                  info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow &&
                   info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
                   info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
                 if (matches && success) {
