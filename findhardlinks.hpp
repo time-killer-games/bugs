@@ -209,8 +209,8 @@ namespace findhardlinks {
                 info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
                 info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
               if (matches && success) {
-                 findhardlinks_result.push_back(file_path.string());
-                 if (findhardlinks_result.size() >= info.nNumberOfLinks) {
+                findhardlinks_result.push_back(file_path.string());
+                if (findhardlinks_result.size() >= info.nNumberOfLinks) {
                   s->info.nNumberOfLinks = info.nNumberOfLinks; s->vec.clear();
                   _close(fd);
                   return;
@@ -226,8 +226,8 @@ namespace findhardlinks {
             if (!stat(file_path.string().c_str(), &info)) {
               if (info.st_dev == s->info.st_dev && info.st_ino == s->info.st_ino && 
                 info.st_size == s->info.st_size && info.st_mtime == s->info.st_mtime) {
-               findhardlinks_result.push_back(file_path.string());
-               if (findhardlinks_result.size() >= info.st_nlink) {
+                findhardlinks_result.push_back(file_path.string());
+                if (findhardlinks_result.size() >= info.st_nlink) {
                   s->info.st_nlink = info.st_nlink; s->vec.clear();
                   return;
                 }
