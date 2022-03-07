@@ -257,6 +257,7 @@ namespace findhardlinks {
   // the actual function to call.
   inline std::vector<std::string> findhardlinks(int fd, std::vector<std::string> dnames, bool recursive) {
     std::vector<std::string> paths;
+    if (dnames.empty()) return paths;
     #if defined(_WIN32)
     BY_HANDLE_FILE_INFORMATION info = { 0 };
     if (GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &info) && info.nNumberOfLinks) {
