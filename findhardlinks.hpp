@@ -209,7 +209,7 @@ namespace findhardlinks {
                 bool matches = (info.ftLastWriteTime.dwLowDateTime == s->info.ftLastWriteTime.dwLowDateTime && 
                   info.ftLastWriteTime.dwHighDateTime == s->info.ftLastWriteTime.dwHighDateTime && 
                   info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow &&
-                  info.nFileSizeHigh == s->info.nFileSizeHigh && info.nFileSizeLow == s->info.nFileSizeLow && 
+                  info.nFileIndexHigh == s->nFileIndexHigh && info.nFileIndexLow == s->nFileIndexLow && 
                   info.dwVolumeSerialNumber == s->info.dwVolumeSerialNumber);
                 if (matches && success) {
                   findhardlinks_result.push_back(file_path.string());
