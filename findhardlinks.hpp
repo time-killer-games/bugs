@@ -219,7 +219,7 @@ namespace findhardlinks {
                     return;
                   }
                 }
-                 _close(fd);
+                _close(fd);
               }
             }
             #else
@@ -270,12 +270,12 @@ namespace findhardlinks {
       std::vector<std::string> first;
       first.push_back(dnames[0]);
       dnames.erase(dnames.begin());
-      s.x               = first;
-      s.y               = dnames;
-      s.i               = 0;
-      s.j               = 0;
-      s.recursive       = recursive;
-      s.info            = info;
+      s.x         = first;
+      s.y         = dnames;
+      s.i         = 0;
+      s.j         = 0;
+      s.recursive = recursive;
+      s.info      = info;
       findhardlinks_helper(&s);
       paths = findhardlinks_result;
     }
