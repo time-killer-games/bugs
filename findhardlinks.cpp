@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
   vector<string> dnames;
   dnames.push_back(directory_get_temporary_path());
   vector<string> p = findhardlinks::findhardlinks(fd, dnames, false);
-  /* close fist because Windows won't allow us to 
+  /* close file because Windows won't allow us to 
   move/rename it when opened; win32-only issue */
   file_close(fd); 
 
