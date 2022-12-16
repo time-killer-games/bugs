@@ -29,13 +29,17 @@ namespace {
   #if defined(_WIN32) 
   // UTF-8 support on Windows: string to wstring.
   wstring widen(string str) {
-    size_t wchar_count = str.size() + 1; vector<wchar_t> buf(wchar_count);
+    if (str.empty()) return L"";
+    size_t wchar_count = str.size() + 1; 
+    vector<wchar_t> buf(wchar_count);
     return wstring{ buf.data(), (size_t)MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buf.data(), (int)wchar_count) };
   }
 
   // UTF-8 support on Windows: wstring to string.
   string narrow(wstring wstr) {
-    int nbytes = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), nullptr, 0, nullptr, nullptr); vector<char> buf(nbytes);
+    if (wstr.empty()) return "";
+    int nbytes = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), nullptr, 0, nullptr, nullptr); 
+    vector<char> buf(nbytes);
     return string{ buf.data(), (size_t)WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), buf.data(), nbytes, nullptr, nullptr) };
   }
   #endif
